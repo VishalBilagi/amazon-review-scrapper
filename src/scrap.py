@@ -1,10 +1,20 @@
-import urllib.request
-import re
-from bs4 import BeautifulSoup
-from time import sleep
-import uiautomation as automation
-from pynput import keyboard
+#Review Scrapper for products on amazon.in site
 
+#Libs for opening url and parsing html data
+import urllib.request
+from bs4 import BeautifulSoup
+
+#For RegEX operations
+import re
+
+#Everybody needs sleep :P even pyhtons
+from time import sleep
+
+#To fetch address bar url text from chrome's current tab
+import uiautomation as automation
+
+#Listen to keyboard hits for capturing url when pause/break key is pressed
+from pynput import keyboard
 
 def on_press(key):
     try:
@@ -36,23 +46,29 @@ def getReviewData():
 		control = controlList[0]
 	else:
 		control = controlList[1]
-
+    #Look for chrome's current tab's address bar
 	address_control = automation.FindControl(control, lambda c, d: isinstance(
 	    c, automation.EditControl) and "Address and search bar" in c.Name)
 
+	#Load product's review url into product
 	product = address_control.CurrentValue().replace('/dp/', '/product-reviews/')
 	print(product)
 
+	#Open and parse the reviews site url
 	page = urllib.request.urlopen(product)
-
 	soup = BeautifulSoup(page, 'html5lib')
 
+	#'a-section-cell-widget' class contains the review body
+	#There are total of ten reviews per page
 	reviewBody = soup.find_all(class_=re.compile("a-section celwidget"))
+	#'cr-vote-text' class contains number of helpful votes a review received
 	reviewVotes = soup.find_all(class_ = re.compile("cr-vote-text"))
 
-	# 0-2-0 Review Title
-	# 0-0-0-0 Review Rating
-	# 3-0-0 Review Text
+	# Navigating reviewBody to find:
+	# 1) 0-2-0 Review Title
+	# 2) 0-0-0-0 Review Rating
+	# 3) 3-0-0 Review Text
+	# 4) Review ID
 
 	for reviewContent, reviewVoteCount in zip(reviewBody, reviewVotes):
 		print("Ratings: " +
