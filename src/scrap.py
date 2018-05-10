@@ -4,6 +4,8 @@
 import urllib.request
 from bs4 import BeautifulSoup
 
+import sys
+
 #For RegEX operations
 import re
 
@@ -16,42 +18,42 @@ import uiautomation as automation
 #Listen to keyboard hits for capturing url when pause/break key is pressed
 from pynput import keyboard
 
-def on_press(key):
-    try:
-        # print('alphanumeric key {0} pressed'.format(key.char))
-        ...
-    except AttributeError:
-        # print('special key {0} pressed'.format(key))
-        ...
+# def on_press(key):
+#     try:
+#         # print('alphanumeric key {0} pressed'.format(key.char))
+#         ...
+#     except AttributeError:
+#         # print('special key {0} pressed'.format(key))
+#         ...
 
 
-def on_release(key):
-    # print('{0} released'.format(key))
-    if key == keyboard.Key.esc:
-        # Stop listener
-        exit(0)
-    if key == keyboard.Key.pause:
-        getReviewData()
+# def on_release(key):
+#     # print('{0} released'.format(key))
+#     if key == keyboard.Key.esc:
+#         # Stop listener
+#         exit(0)
+#     if key == keyboard.Key.pause:
+#         getReviewData()
 
 
 def getReviewData():
 	product = ""
 	# sleep(3)
-	control = automation.GetFocusedControl()
-	controlList = []
-	while control:
-		controlList.insert(0, control)
-		control = control.GetParentControl()
-	if len(controlList) == 1:
-		control = controlList[0]
-	else:
-		control = controlList[1]
-    #Look for chrome's current tab's address bar
-	address_control = automation.FindControl(control, lambda c, d: isinstance(
-	    c, automation.EditControl) and "Address and search bar" in c.Name)
+	# control = automation.GetFocusedControl()
+	# controlList = []
+	# while control:
+	# 	controlList.insert(0, control)
+	# 	control = control.GetParentControl()
+	# if len(controlList) == 1:
+	# 	control = controlList[0]
+	# else:
+	# 	control = controlList[1]
+    # #Look for chrome's current tab's address bar
+	# address_control = automation.FindControl(control, lambda c, d: isinstance(
+	#     c, automation.EditControl) and "Address and search bar" in c.Name)
 
 	#Load product's review url into product
-	product = address_control.CurrentValue().replace('/dp/', '/product-reviews/')
+	product = sys.argv[1].replace('/dp/','/product-reviews/')# = address_control.CurrentValue().replace('/dp/', '/product-reviews/')
 	print(product)
 
 	#Open and parse the reviews site url
@@ -83,11 +85,11 @@ def getReviewData():
 		print("Helpful Votes: " + votePattern.sub('',str(reviewVoteCount.get_text())))
 		print("Review ID: " +str(reviewContent.get('id')).replace('customer_review-',''))
 		print("")
+getReviewData()
 
 
 
-
-with keyboard.Listener(
-        on_press=on_press,
-        on_release=on_release) as listener:
-    listener.join()
+# with keyboard.Listener(
+#         on_press=on_press,
+#         on_release=on_release) as listener:
+#     listener.join()

@@ -1,0 +1,23 @@
+{
+  "name": "scrapper",
+  "version": "0.0.1",
+  "description": "Amazon review scrapper",
+  "main": "index.js",
+  "dependencies": {
+    "express": "^4.16.3"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VishalBilagi/amazon-review-scrapper.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/VishalBilagi/amazon-review-scrapper/issues"
+  },
+  "homepage": "https://github.com/VishalBilagi/amazon-review-scrapper#readme"
+}

@@ -1,2 +1,3 @@
 # VSCode ignore folder
 .vs/
+./node_modules
