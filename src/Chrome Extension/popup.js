@@ -12,7 +12,7 @@ button.onclick = function(element) {
     chrome.tabs.query({},function(tabs){
         console.log("dope"+url);
         var http = new XMLHttpRequest();
-        var siteURL = "http://localhost:3000/";
+        var siteURL = "https://review-digger.herokuapp.com/";
         var params = "amazonURL="+url;
         http.open("POST",siteURL,true);
 
