@@ -13,10 +13,10 @@ import re
 from time import sleep
 
 #To fetch address bar url text from chrome's current tab
-import uiautomation as automation
+#import uiautomation as automation
 
 #Listen to keyboard hits for capturing url when pause/break key is pressed
-from pynput import keyboard
+#from pynput import keyboard
 
 # def on_press(key):
 #     try:
