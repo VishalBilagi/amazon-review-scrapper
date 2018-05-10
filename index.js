@@ -8,7 +8,7 @@ app.use(bodyparser.urlencoded({
 
 app.use(bodyparser.json());
 
-app.listen(3000, function(){
+app.listen(process.env.PORT || 3000, function(){
     console.log("Running on 3000");
 });
 
