@@ -29,14 +29,21 @@ def getReviewData():
 	print(product)
 	success = False
 
-	for x in range(0,5):
+	for x in range(0,100):
 		print(str(x) + product)
 		while success == False:
 			try:
 				#Open reviews site url
-				page = urllib.request.urlopen(product)
+				req = urllib.request.Request(
+					product, 
+					data=None, 
+					headers={
+						'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.139 Safari/537.36'
+					}
+				)
+				page = urllib.request.urlopen(req)
 				success = True
-				print("opened")
+				#print("opened")
 			except urllib.error.URLError as e: print(e.reason)
 			#Wait some time before making another request
 			sleep(2)
@@ -44,7 +51,7 @@ def getReviewData():
 		if(success):
 			#Parse review page
 			soup = BeautifulSoup(page, 'html5lib')
-			print("parsed")
+			#print("parsed")
 		else:
 			return -1
 		#'a-section-cell-widget' class contains the review body
@@ -52,7 +59,7 @@ def getReviewData():
 		reviewBody = soup.find_all(class_=re.compile("a-section celwidget"))
 		#'a-row a-expander-container a-expander-inline-container' class contains body of helpful votes a review received
 		reviewVotes = soup.find_all(class_ = re.compile("a-row a-expander-container a-expander-inline-container"))
-		print(str(len(reviewBody)) + " "+str(len(reviewVotes)))
+		#print(str(len(reviewBody)) + " "+str(len(reviewVotes)))
 		# Navigating reviewBody to find:
 		# 1) 0-2-0 Review Title
 		# 2) 0-0-0-0 Review Rating
@@ -96,11 +103,11 @@ def getReviewData():
 			global df1
 			df1 = pd.concat([df1,df], ignore_index=True)
 		global pageNum
-		print(product[:-1])
-		product = product[:-1] + str(pageNum)
+		matchPageNum = re.search(r'pageNumber=', product)
+		product = product[:matchPageNum.end()] + str(pageNum)
 		pageNum = pageNum+1
 		success = False
-
+		
 	df1.to_csv("amazonReviews.csv", index=False)
 
 getReviewData()
