@@ -19,6 +19,11 @@ df1 = pd.DataFrame(columns = cols)
 
 debug = False
 pageNum = 2
+reviewCount = 1
+setReviewCount = True
+
+
+
 def getReviewData():
 	product = ""
 	productURLPattern = re.compile(r'(\/gp\/product\/)|\/dp\/')
@@ -26,11 +31,37 @@ def getReviewData():
 	matchProduct = re.search(r'product-reviews/.{11}',product)
 	product = product.replace(product[matchProduct.end():],'?pageNumber=1')
 	
-	print(product)
+	#print(product)
 	success = False
 
-	for x in range(0,100):
-		print(str(x) + product)
+	while success == False:
+			try:
+				#Open reviews site url
+				req = urllib.request.Request(
+					product, 
+					data=None, 
+					headers={
+						'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.139 Safari/537.36'
+					}
+				)
+				page = urllib.request.urlopen(req)
+				success = True
+				#print("opened")
+			except urllib.error.URLError as e: print(e.reason)
+			#Wait some time before making another request
+			sleep(2)
+	if(success):
+		#Parse review page
+		soup = BeautifulSoup(page, 'html5lib')
+		#print("parsed")
+	else:
+		return -1
+	reviewPageCount = soup.find("div",{"id":"cm_cr-pagination_bar"})
+	reviewCount = reviewPageCount.contents[0].contents[6].contents[0].contents[0]
+	#print(reviewCount)
+
+	for x in range(0,int(reviewCount)):
+		print("Loading reviews "+str(x+1)+" of "+ str(reviewCount))
 		while success == False:
 			try:
 				#Open reviews site url
@@ -60,6 +91,8 @@ def getReviewData():
 		#'a-row a-expander-container a-expander-inline-container' class contains body of helpful votes a review received
 		reviewVotes = soup.find_all(class_ = re.compile("a-row a-expander-container a-expander-inline-container"))
 		#print(str(len(reviewBody)) + " "+str(len(reviewVotes)))
+		
+
 		# Navigating reviewBody to find:
 		# 1) 0-2-0 Review Title
 		# 2) 0-0-0-0 Review Rating
