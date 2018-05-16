@@ -57,7 +57,11 @@ def getReviewData():
 	else:
 		return -1
 	reviewPageCount = soup.find("div",{"id":"cm_cr-pagination_bar"})
-	reviewCount = reviewPageCount.contents[0].contents[6].contents[0].contents[0]
+	#reviewCount = reviewPageCount.contents[0].contents[6].contents[0].contents[0]
+	if(len(reviewPageCount.contents[0]) <8):
+		reviewCount = reviewPageCount.contents[0].contents[len(reviewPageCount.contents[0])-2].contents[0].contents[0]
+	else:
+		reviewCount = reviewPageCount.contents[0].contents[6].contents[0].contents[0]
 	#print(reviewCount)
 
 	for x in range(0,int(reviewCount)):
@@ -141,6 +145,6 @@ def getReviewData():
 		pageNum = pageNum+1
 		success = False
 		
-	df1.to_csv("amazonReviews.csv", index=False)
+	df1.to_csv(pid+".csv", index=False)
 
 getReviewData()
