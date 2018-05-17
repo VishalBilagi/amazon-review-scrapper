@@ -57,13 +57,12 @@ def getReviewData():
 	else:
 		return -1
 	reviewPageCount = soup.find("div",{"id":"cm_cr-pagination_bar"})
-	#reviewCount = reviewPageCount.contents[0].contents[6].contents[0].contents[0]
 	if(len(reviewPageCount.contents[0]) <8):
 		reviewCount = reviewPageCount.contents[0].contents[len(reviewPageCount.contents[0])-2].contents[0].contents[0]
 	else:
 		reviewCount = reviewPageCount.contents[0].contents[6].contents[0].contents[0]
 	#print(reviewCount)
-
+	success = False
 	for x in range(0,int(reviewCount)):
 		print("Loading reviews "+str(x+1)+" of "+ str(reviewCount))
 		while success == False:
