@@ -14,13 +14,12 @@ from time import sleep
 
 import pandas as pd
 
-cols = ('Product-ID', 'Ratings', 'Review-Title', 'Review-Text', 'Helpful-Votes', 'Review-ID')
+cols = ('Product-ID', 'Ratings', 'Review-Title', 'Review-Text', 'Helpful-Votes', 'Review-ID', 'Review-Date')
 df1 = pd.DataFrame(columns = cols)
 
 debug = False
 pageNum = 2
 reviewCount = 1
-setReviewCount = True
 
 def openAndParse(success,product):
 	while success == False:
@@ -38,7 +37,7 @@ def openAndParse(success,product):
 				#print("opened")
 			except urllib.error.URLError as e: print(e.reason)
 			#Wait some time before making another request
-			sleep(2)
+			#sleep(2)
 	if(success):
 		#Parse review page
 		return BeautifulSoup(page, 'html5lib')
@@ -63,10 +62,13 @@ def getReviewData():
 	soup = openAndParse(success,product)
 
 	reviewPageCount = soup.find("div",{"id":"cm_cr-pagination_bar"})
-	if(len(reviewPageCount.contents[0]) <8):
-		reviewCount = reviewPageCount.contents[0].contents[len(reviewPageCount.contents[0])-2].contents[0].contents[0]
+	if(reviewPageCount is not None):
+		if(len(reviewPageCount.contents[0]) <8):
+			reviewCount = reviewPageCount.contents[0].contents[len(reviewPageCount.contents[0])-2].contents[0].contents[0]
+		else:
+			reviewCount = reviewPageCount.contents[0].contents[6].contents[0].contents[0]
 	else:
-		reviewCount = reviewPageCount.contents[0].contents[6].contents[0].contents[0]
+		reviewCount = 1
 	#print(reviewCount)
 	success = False
 	for x in range(0,int(reviewCount)):
@@ -79,7 +81,7 @@ def getReviewData():
 		#'a-row a-expander-container a-expander-inline-container' class contains body of helpful votes a review received
 		reviewVotes = soup.find_all(class_ = re.compile("a-row a-expander-container a-expander-inline-container"))
 		#print(str(len(reviewBody)) + " "+str(len(reviewVotes)))
-		
+		reviewDate = soup.find_all("span",{"data-hook":"review-date"})
 
 		# Navigating reviewBody to find:
 		# 1) 0-2-0 Review Title
@@ -87,7 +89,7 @@ def getReviewData():
 		# 3) 3-0-0 Review Text
 		# 4) Review ID
 
-		for reviewContent, reviewVoteCount in zip(reviewBody, reviewVotes):
+		for reviewContent, reviewVoteCount, date in zip(reviewBody, reviewVotes, reviewDate):
 			pidPattern = re.compile(r'\/[A-Z0-9]{10}\/')
 			reviewPattern = re.compile(r', <br\/>,|\[|\]')
 			votePattern = re.compile(r'(people|person) found this helpful')
@@ -103,9 +105,10 @@ def getReviewData():
 					votes = votePattern.sub('',str(reviewVoteCount.contents[0].contents[1].contents[0].contents[0]))
 					votes = votes.replace('One','1')
 					print("Helpful Votes: "+votes)
-				print("Review ID: " +str(reviewContent.get('id')).replace('customer_review-',''))
+				print("Review ID: " + str(reviewContent.get('id')).replace('customer_review-',''))
+				print("Review Date:" + str(parse(date.text.replace('on ','')).strftime("%d/%m/%Y")))
 				print("")
-			cols = ('Product-ID', 'Ratings', 'Review-Title', 'Review-Text', 'Helpful-Votes', 'Review-ID')
+			cols = ('Product-ID', 'Ratings', 'Review-Title', 'Review-Text', 'Helpful-Votes', 'Review-ID', 'Review-Date')
 			lst=[]
 			pid = pidPattern.search(product).group().replace('/','')
 			ratings = str(reviewContent.contents[0].contents[0].contents[0].contents[0].contents[0])
@@ -119,7 +122,8 @@ def getReviewData():
 					votes = votePattern.sub('',str(reviewVoteCount.contents[0].contents[1].contents[0].contents[0]))
 					votes = votes.replace('One','1')
 			rid = str(reviewContent.get('id')).replace('customer_review-','')
-			lst.append([pid,ratings,title,text,votes,rid])
+			rDate = str(parse(date.text.replace('on ','')).strftime("%d/%m/%Y"))
+			lst.append([pid,ratings,title,text,votes,rid,rDate])
 			df = pd.DataFrame(lst, columns = cols)
 			global df1
 			df1 = pd.concat([df1,df], ignore_index=True)
