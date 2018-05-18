@@ -3,7 +3,7 @@
 #Libs for opening url and parsing html data
 import urllib.request,urllib.error
 from bs4 import BeautifulSoup
-
+from dateparser import parse
 import sys
 
 #For RegEX operations
@@ -22,18 +22,7 @@ pageNum = 2
 reviewCount = 1
 setReviewCount = True
 
-
-
-def getReviewData():
-	product = ""
-	productURLPattern = re.compile(r'(\/gp\/product\/)|\/dp\/')
-	product = productURLPattern.sub('/product-reviews/',sys.argv[1])
-	matchProduct = re.search(r'product-reviews/.{11}',product)
-	product = product.replace(product[matchProduct.end():],'?pageNumber=1')
-	
-	#print(product)
-	success = False
-
+def openAndParse(success,product):
 	while success == False:
 			try:
 				#Open reviews site url
@@ -52,10 +41,27 @@ def getReviewData():
 			sleep(2)
 	if(success):
 		#Parse review page
-		soup = BeautifulSoup(page, 'html5lib')
+		return BeautifulSoup(page, 'html5lib')
 		#print("parsed")
 	else:
 		return -1
+
+def getReviewData():
+	product = ""
+	productURLPattern = re.compile(r'(\/gp\/product\/)|\/dp\/')
+	product = productURLPattern.sub('/product-reviews/',sys.argv[1])
+	matchProduct = re.search(r'product-reviews/.{11}',product)
+	product = product.replace(product[matchProduct.end():],'?pageNumber=1')
+	
+	#print(product)
+	success = False
+	soup = openAndParse(success,sys.argv[1])
+	#salesRank = soup.find("tr",{"id":"SalesRank"})
+	dateFirstAvaliable = parse(str(soup.find(class_="date-first-available").contents[1].contents[0])).strftime("%d/%m/%Y")
+	print(dateFirstAvaliable)
+	success = False
+	soup = openAndParse(success,product)
+
 	reviewPageCount = soup.find("div",{"id":"cm_cr-pagination_bar"})
 	if(len(reviewPageCount.contents[0]) <8):
 		reviewCount = reviewPageCount.contents[0].contents[len(reviewPageCount.contents[0])-2].contents[0].contents[0]
@@ -65,29 +71,8 @@ def getReviewData():
 	success = False
 	for x in range(0,int(reviewCount)):
 		print("Loading reviews "+str(x+1)+" of "+ str(reviewCount))
-		while success == False:
-			try:
-				#Open reviews site url
-				req = urllib.request.Request(
-					product, 
-					data=None, 
-					headers={
-						'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.139 Safari/537.36'
-					}
-				)
-				page = urllib.request.urlopen(req)
-				success = True
-				#print("opened")
-			except urllib.error.URLError as e: print(e.reason)
-			#Wait some time before making another request
-			sleep(2)
 
-		if(success):
-			#Parse review page
-			soup = BeautifulSoup(page, 'html5lib')
-			#print("parsed")
-		else:
-			return -1
+		soup = openAndParse(success,product)
 		#'a-section-cell-widget' class contains the review body
 		#There are total of ten reviews per page
 		reviewBody = soup.find_all(class_=re.compile("a-section celwidget"))
