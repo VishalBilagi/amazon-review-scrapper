@@ -14,7 +14,7 @@ from time import sleep
 
 import pandas as pd
 
-cols = ('Product-ID', 'Ratings', 'Review-Title', 'Review-Text', 'Helpful-Votes', 'Review-ID', 'Review-Date')
+cols = ('Product-ID', 'Date-First-Available' ,'Ratings', 'Review-Title', 'Review-Text', 'Helpful-Votes', 'Review-ID', 'Review-Date')
 df1 = pd.DataFrame(columns = cols)
 
 debug = False
@@ -37,7 +37,7 @@ def openAndParse(success,product):
 				#print("opened")
 			except urllib.error.URLError as e: print(e.reason)
 			#Wait some time before making another request
-			#sleep(2)
+			sleep(2)
 	if(success):
 		#Parse review page
 		return BeautifulSoup(page, 'html5lib')
@@ -55,9 +55,10 @@ def getReviewData():
 	#print(product)
 	success = False
 	soup = openAndParse(success,sys.argv[1])
-	#salesRank = soup.find("tr",{"id":"SalesRank"})
+	salesRank = soup.find("tr",{"id":"SalesRank"})
+	print( re.compile(r'[\n()]').sub('', str(salesRank.contents[1].contents[0])))
 	dateFirstAvaliable = parse(str(soup.find(class_="date-first-available").contents[1].contents[0])).strftime("%d/%m/%Y")
-	print(dateFirstAvaliable)
+	# print(dateFirstAvaliable)
 	success = False
 	soup = openAndParse(success,product)
 
@@ -108,7 +109,7 @@ def getReviewData():
 				print("Review ID: " + str(reviewContent.get('id')).replace('customer_review-',''))
 				print("Review Date:" + str(parse(date.text.replace('on ','')).strftime("%d/%m/%Y")))
 				print("")
-			cols = ('Product-ID', 'Ratings', 'Review-Title', 'Review-Text', 'Helpful-Votes', 'Review-ID', 'Review-Date')
+			cols = ('Product-ID', 'Date-First-Available' ,'Ratings', 'Review-Title', 'Review-Text', 'Helpful-Votes', 'Review-ID', 'Review-Date')
 			lst=[]
 			pid = pidPattern.search(product).group().replace('/','')
 			ratings = str(reviewContent.contents[0].contents[0].contents[0].contents[0].contents[0])
@@ -123,7 +124,7 @@ def getReviewData():
 					votes = votes.replace('One','1')
 			rid = str(reviewContent.get('id')).replace('customer_review-','')
 			rDate = str(parse(date.text.replace('on ','')).strftime("%d/%m/%Y"))
-			lst.append([pid,ratings,title,text,votes,rid,rDate])
+			lst.append([pid,dateFirstAvaliable,ratings,title,text,votes,rid,rDate])
 			df = pd.DataFrame(lst, columns = cols)
 			global df1
 			df1 = pd.concat([df1,df], ignore_index=True)
