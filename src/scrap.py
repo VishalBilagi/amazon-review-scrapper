@@ -55,9 +55,25 @@ def getReviewData():
 	#print(product)
 	success = False
 	soup = openAndParse(success,sys.argv[1])
-	salesRank = soup.find("tr",{"id":"SalesRank"})
-	print( re.compile(r'[\n()]').sub('', str(salesRank.contents[1].contents[0])))
-	dateFirstAvaliable = parse(str(soup.find(class_="date-first-available").contents[1].contents[0])).strftime("%d/%m/%Y")
+	### TO DO : 
+	# Inlcude Sales Rank 
+	# scrap appropriately for different types of products
+	### TO DO
+	#salesRank = soup.find(id="SalesRank")
+	#print( re.compile(r'[\n()]').sub('', str(salesRank.contents[1].contents[0])))
+	
+	try:
+		dateFirstAvaliable = parse(str(soup.find(class_="date-first-available").contents[1].contents[0])).strftime("%d/%m/%Y")
+	except: 
+		try: 
+			#print("This is a book")
+			dateFirstAvaliable = soup.find('b', text="Publisher:").next_sibling
+			dateFirstAvaliable = re.compile(r'[0-9]{1,2} [a-zA-Z]{1,10} [0-9]{1,4}').findall(str(dateFirstAvaliable))
+			dateFirstAvaliable = parse(dateFirstAvaliable[0]).strftime("%d/%m/%Y")
+			#print(dateFirstAvaliable)
+		except: dateFirstAvaliable = "NA"
+
+	
 	# print(dateFirstAvaliable)
 	success = False
 	soup = openAndParse(success,product)
