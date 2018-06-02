@@ -5,6 +5,7 @@ import urllib.request,urllib.error
 from bs4 import BeautifulSoup
 from dateparser import parse
 import sys
+from googledrive import sendCSV
 
 #For RegEX operations
 import re
@@ -151,5 +152,6 @@ def getReviewData():
 		success = False
 		
 	df1.to_csv(pid+".csv", index=False)
+	sendCSV(pid)
 
 getReviewData()
