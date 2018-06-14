@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 from dateparser import parse
 import sys
 import http
+from googledrive import sendCSV
 #For RegEX operations
 import re
 
@@ -218,5 +219,6 @@ def getReviewData():
 	pidPattern = re.compile(r'\/[A-Z0-9]{10}\/')
 	pid = pidPattern.search(product).group().replace('/','')
 	df1.to_csv(pid +".csv", index=False)
+	sendCSV(pid)
 
 getReviewData()
