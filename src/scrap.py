@@ -6,7 +6,7 @@ from bs4 import BeautifulSoup
 from dateparser import parse
 import sys
 import http
-from googledrive import sendCSV
+from .googledrive import sendCSV
 #For RegEX operations
 import re
 
@@ -122,16 +122,16 @@ def getReviewData_mThreading(linksList,pdt,dfa):
 	
 
 
-def getReviewData():
+def getReviewData(p):
 	product = ""
 	productURLPattern = re.compile(r'(\/gp\/product\/)|\/dp\/')
-	product = productURLPattern.sub('/product-reviews/',sys.argv[1])
+	product = productURLPattern.sub('/product-reviews/',p)
 	matchProduct = re.search(r'product-reviews/.{11}',product)
 	product = product.replace(product[matchProduct.end():],'?pageNumber=1')
 	
 	#print(product)
 	success = False
-	soup = openAndParse(success,sys.argv[1])
+	soup = openAndParse(success,p)
 	### TO DO : 
 	# Inlcude Sales Rank 
 	# scrap appropriately for different types of products
@@ -220,5 +220,3 @@ def getReviewData():
 	pid = pidPattern.search(product).group().replace('/','')
 	df1.to_csv(pid +".csv", index=False)
 	sendCSV(pid)
-
-getReviewData()
