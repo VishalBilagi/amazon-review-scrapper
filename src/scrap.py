@@ -219,4 +219,5 @@ def getReviewData(p):
 	pidPattern = re.compile(r'\/[A-Z0-9]{10}\/')
 	pid = pidPattern.search(product).group().replace('/','')
 	df1.to_csv(pid +".csv", index=False)
-	sendCSV(pid)
+	fileID = sendCSV(pid)
+	return fileID

@@ -1,3 +1,7 @@
 # VSCode ignore folder
-.vs/
-./node_modules
+./vs/
+*.csv
+*.json
+*_CSV-Data
+*__pycache__
+*.tar

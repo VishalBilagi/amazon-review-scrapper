@@ -1,0 +1,11 @@
+before_install:
+- openssl aes-256-cbc -K $encrypted_7eeedfc659a5_key -iv $encrypted_7eeedfc659a5_iv
+  -in secrets.tar.enc -out secrets.tar -d
+
+language: python
+python:
+  -"3.6.4"
+install:
+  pip install -r requirements
+script:
+  pytest
