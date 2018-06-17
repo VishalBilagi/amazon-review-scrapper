@@ -1,10 +1,11 @@
 before_install:
-- openssl aes-256-cbc -K $encrypted_87a7346dce65_key -iv $encrypted_87a7346dce65_iv -in secrets.tar.enc -out secrets.tar -d
+- openssl aes-256-cbc -K $encrypted_87a7346dce65_key -iv $encrypted_87a7346dce65_iv
+  -in secrets.tar.enc -out secrets.tar -d
 - tar xvf secrets.tar
-
 language: python
-python: "3.6"
-install:
-  pip install -r requirements.txt
-script:
-  pytest
+python: '3.6'
+install: pip install -r requirements.txt
+script: pytest
+notificaions:
+  slack:
+    secure: SNvZQXu+O1vus/FB1EbI8lhiFnlNRI0aj7Oy8ksFRbfo3m4h6WnHDIj7xg36tW46ZB1Np4wVVidY9sE2GhTRepAdGvYSpDnYP2a6mRGsOcHYRMIrmLj6d2rU3Uo3ubAZ4vMA/9pe6J3HT0HZTUQ7+LwvNWJe9DlhXsPF88gsYE8GLfVWcBpbmaxrGumDnr2v2UkJrU+9IUtprZKQG2ThDfIzBnBJhY1ZaT5LhLZ9i2XgdQQmBTnpMSNqghz4Rcu/PweGjNhQw3WpJWfCU+4XpDGdtC/EbETrFR9WNntFkjBHQhQ0BiX63ufgMOPuf1S2hBj8t91kAyQQlBgafUqNbpmInJf869Joz032NqeGUpUWM9Q8zhvzVzNXAUyXXcjM7SsbezjO6TWCC44fIMi6GFG8b1UXutlI81f/qkyyTXKnvq00Y5Xd43Y8V9fSDBuhaPcRG+qjDSVr9ztNtWG+WctB/iAh69dm1YTtmQImNtK964REF3kf6fHQgbTgI5c99O2cU1UaCbKlhDJyr7xarGMCmxUXuZOd5I29lB6elFuX9gAcfvHHBcXqs5CxKcclywy69pFKBXjwaHJbAv8J7INM1eizPpNNOTK7Bryvc6s9N077UcEVIFRf36IKqrdnCzYVgFrQQcOADrnm40nGzH7AWXnXnumH222YACSBZ/g=
