@@ -19,7 +19,7 @@ service = build('drive','v3', http=creds.authorize(Http()))
 
 def deleteTestFile(service, fid):
     try:
-        body = service.files().delete(fileId=fid).execute()
+        service.files().delete(fileId=fid).execute()
     except errors.HttpError as error:
         print ('An error occurred: %s' % error)
 
@@ -29,4 +29,4 @@ with open('testlink.txt','r') as file:
 
 for s in str:
     fid = getReviewData(s)
-    assert(deleteTestFile(service, fid))
+    deleteTestFile(service, fid)
