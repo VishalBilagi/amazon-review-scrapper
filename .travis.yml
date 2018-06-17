@@ -1,5 +1,5 @@
 before_install:
-- openssl aes-256-cbc -K $encrypted_7eeedfc659a5_key -iv $encrypted_7eeedfc659a5_iv -in secrets.tar.enc -out secrets.tar -d
+- openssl aes-256-cbc -K $encrypted_87a7346dce65_key -iv $encrypted_87a7346dce65_iv -in secret.tar.enc -out secret.tar -d
 
 language: python
 python: "3.6"
