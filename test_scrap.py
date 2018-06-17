@@ -25,10 +25,10 @@ def deleteTestFile(service, fid):
         print ('An error occurred: %s' % error)
         return -1
 
+def test_getReviewData():
+    with open('testlink.txt','r') as file:
+        str = file.readlines()
 
-with open('testlink.txt','r') as file:
-    str = file.readlines()
-
-for s in str:
-    fid = getReviewData(s)
-    assert deleteTestFile(service, fid) == 0
+    for s in str:
+        fid = getReviewData(s)
+        assert deleteTestFile(service, fid) == 0
