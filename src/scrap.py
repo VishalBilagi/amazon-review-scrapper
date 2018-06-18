@@ -19,7 +19,7 @@ from time import sleep
 
 import pandas as pd
 
-cols = ('Product-ID', 'Date-First-Available' ,'Ratings', 'Review-Title', 'Review-Text', 'Helpful-Votes', 'Review-ID', 'Review-Date')
+cols = ('Product-ID', 'Product-Title', 'Date-First-Available' ,'Ratings', 'Review-Title', 'Review-Text', 'Helpful-Votes', 'Review-ID', 'Review-Date')
 df1 = pd.DataFrame(columns = cols)
 
 debug = False
@@ -55,10 +55,11 @@ def openAndParse(success,product):
 	else:
 		return -1
 
-def getReviewData_mThreading(linksList,pdt,dfa):
+def getReviewData_mThreading(linksList,pdt,dfa,pTitle):
 	df_list = []
 	product = pdt
 	dateFirstAvaliable = dfa
+	productTitle = pTitle
 	start = linksList[0]
 
 	while start <= linksList[1]:
@@ -86,6 +87,7 @@ def getReviewData_mThreading(linksList,pdt,dfa):
 			votePattern = re.compile(r'(people|person) found this helpful')
 			if(debug):
 				print("Product ID: "+ pidPattern.search(product).group().replace('/',''))
+				print("Product Title: " + productTitle)
 				print("Ratings: " + str(reviewContent.contents[0].contents[0].contents[0].contents[0].contents[0]))
 				print("Review Title: " + str(reviewContent.contents[0].contents[2].contents[0]))
 				print("Review Text: " + reviewPattern.sub('',str(reviewContent.contents[3].contents[0].contents)))
@@ -99,9 +101,10 @@ def getReviewData_mThreading(linksList,pdt,dfa):
 				print("Review ID: " + str(reviewContent.get('id')).replace('customer_review-',''))
 				print("Review Date:" + str(parse(date.text.replace('on ','')).strftime("%d/%m/%Y")))
 				print("")
-			cols = ('Product-ID', 'Date-First-Available' ,'Ratings', 'Review-Title', 'Review-Text', 'Helpful-Votes', 'Review-ID', 'Review-Date')
+			cols = ('Product-ID', 'Product-Title', 'Date-First-Available' ,'Ratings', 'Review-Title', 'Review-Text', 'Helpful-Votes', 'Review-ID', 'Review-Date')
 			lst=[]
 			pid = pidPattern.search(product).group().replace('/','')
+			pdtTitle = productTitle
 			ratings = str(reviewContent.contents[0].contents[0].contents[0].contents[0].contents[0])
 			ratings = ratings[0]
 			title = str(reviewContent.contents[0].contents[2].contents[0])
@@ -114,7 +117,7 @@ def getReviewData_mThreading(linksList,pdt,dfa):
 					votes = votes.replace('One','1')
 			rid = str(reviewContent.get('id')).replace('customer_review-','')
 			rDate = str(parse(date.text.replace('on ','')).strftime("%d/%m/%Y"))
-			lst.append([pid,dateFirstAvaliable,ratings,title,text,votes,rid,rDate])
+			lst.append([pid,pdtTitle,dateFirstAvaliable,ratings,title,text,votes,rid,rDate])
 			df = pd.DataFrame(lst, columns = cols)
 			df_list.append(df)
 		start +=1
@@ -149,8 +152,10 @@ def getReviewData(p):
 			dateFirstAvaliable = parse(dateFirstAvaliable[0]).strftime("%d/%m/%Y")
 			#print(dateFirstAvaliable)
 		except: dateFirstAvaliable = "NA"
-
 	
+	productTitle = soup.find('span',{'id':'productTitle'}).text
+	productTitlePattern = re.compile(r'[^ a-zA-Z0-9,()/] *')
+	productTitle = productTitlePattern.sub('',productTitle)
 	# print(dateFirstAvaliable)
 	success = False
 	soup = openAndParse(success,product)
@@ -205,7 +210,7 @@ def getReviewData(p):
 	#setup multi threading
 	pool = EpicPool(10)
 	#load constant paramenters to be passed to getReviewData_mThreading
-	partial_fn = partial(getReviewData_mThreading, pdt=product, dfa = dateFirstAvaliable)
+	partial_fn = partial(getReviewData_mThreading, pdt=product, dfa = dateFirstAvaliable,pTitle=productTitle)
 	#df_set will hold a list of Data Frames computed from getReviewData_mThreading
 	df_set = pool.map(partial_fn, linksList)
 	
