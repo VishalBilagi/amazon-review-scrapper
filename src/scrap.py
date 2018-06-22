@@ -12,6 +12,7 @@ import re
 
 import math
 from multiprocessing.dummy import Pool as EpicPool
+from threading import Lock
 from functools import partial
 
 #Everybody needs sleep :P even pyhtons
@@ -25,7 +26,7 @@ df1 = pd.DataFrame(columns = cols)
 debug = False
 pageNum = 2
 reviewCount = 1
-
+lock = Lock()
 def openAndParse(success,product):
 	while success == False:
 			try:
@@ -119,9 +120,13 @@ def getReviewData_mThreading(linksList,pdt,dfa,pTitle):
 			rDate = str(parse(date.text.replace('on ','')).strftime("%d/%m/%Y"))
 			lst.append([pid,pdtTitle,dateFirstAvaliable,ratings,title,text,votes,rid,rDate])
 			df = pd.DataFrame(lst, columns = cols)
+			global lock
+			lock.acquire()
+			global df1
+			df1 = pd.concat([df1,df], ignore_index=True)
 			df_list.append(df)
+			lock.release()
 		start +=1
-	return df_list
 	
 
 
@@ -212,17 +217,18 @@ def getReviewData(p):
 	#load constant paramenters to be passed to getReviewData_mThreading
 	partial_fn = partial(getReviewData_mThreading, pdt=product, dfa = dateFirstAvaliable,pTitle=productTitle)
 	#df_set will hold a list of Data Frames computed from getReviewData_mThreading
-	df_set = pool.map(partial_fn, linksList)
+	pool.map(partial_fn, linksList)
 	
-	#extract Data Frames from df_list and append to df1 (main) Data Frame
-	for eachDf in df_set:
-		for x in eachDf:
-			global df1
-			df1 = pd.concat([df1,x], ignore_index=True)
-
+	global df1
+	print("Collected "+ str(len(df1))+" reviews")
+	
 	#get pid value to save the Data Frame as <pid>.csv
 	pidPattern = re.compile(r'\/[A-Z0-9]{10}\/')
 	pid = pidPattern.search(product).group().replace('/','')
 	df1.to_csv(pid +".csv", index=False)
+	
+	#clear data frame for next set of reviews
+	df1 = df1.iloc[0:0]
+	#save csv to google drive
 	fileID = sendCSV(pid)
 	return fileID
