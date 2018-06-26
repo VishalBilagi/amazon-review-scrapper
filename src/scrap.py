@@ -1,33 +1,32 @@
 #Review Scrapper for products on amazon.in site
 
 #Libs for opening url and parsing html data
-import urllib.request,urllib.error
-from bs4 import BeautifulSoup
-from dateparser import parse
-import sys
-import http
-from .googledrive import sendCSV
-#For RegEX operations
-import re
-
 import math
-from multiprocessing.dummy import Pool as EpicPool
+import http
+import sys
+import re
+import pandas as pd
+from time import sleep
+from dateparser import parse
+
+from bs4 import BeautifulSoup
+import urllib.request,urllib.error
+
 from threading import Lock
 from functools import partial
+from multiprocessing.dummy import Pool as EpicPool
 
-#Everybody needs sleep :P even pyhtons
-from time import sleep
-
-import pandas as pd
+from .googledrive import sendCSV
 
 cols = ('Product-ID', 'Product-Title', 'Date-First-Available' ,'Ratings', 'Review-Title', 'Review-Text', 'Helpful-Votes', 'Review-ID', 'Review-Date')
-df1 = pd.DataFrame(columns = cols)
+mainDataFrame = pd.DataFrame(columns = cols)
 
 debug = False
-pageNum = 2
-reviewCount = 1
+numberOfReviewPages = 1
 lock = Lock()
+
 def openAndParse(success,product):
+	""" openAndParse(success,product) function returns a parsed HTML soup object"""
 	while success == False:
 			try:
 				#Open reviews site url
@@ -56,90 +55,89 @@ def openAndParse(success,product):
 	else:
 		return -1
 
-def getReviewData_mThreading(linksList,pdt,dfa,pTitle):
+def getReviewData_mThreading(pagePairs,pdt,dfa,pTitle):
+	"""Collects reviews in parallel and pushes them onto a mainDataFrame"""
 	df_list = []
 	product = pdt
 	dateFirstAvaliable = dfa
-	productTitle = pTitle
-	start = linksList[0]
+	HC_PRODUCT_TITLE = pTitle
+	start = pagePairs[0]
 
-	while start <= linksList[1]:
-		matchPageNum = re.search(r'pageNumber=', product)
-		startPdt = product[:matchPageNum.end()] + str(start)
+	while start <= pagePairs[1]:
+		RE_PAGE_NUMBER = re.search(r'pageNumber=', product)
+		review_page = product[:RE_PAGE_NUMBER.end()] + str(start)
 
-		soup = openAndParse(False,startPdt)
+		soup = openAndParse(False,review_page)
 		#'a-section-cell-widget' class contains the review body
 		#There are total of ten reviews per page
-		reviewBody = soup.find_all(class_=re.compile("a-section celwidget"))
+		HC_REVIEW_BODIES = soup.find_all(class_=re.compile("a-section celwidget"))
 		#'a-row a-expander-container a-expander-inline-container' class contains body of helpful votes a review received
-		reviewVotes = soup.find_all(class_ = re.compile("a-row a-expander-container a-expander-inline-container"))
-		#print(str(len(reviewBody)) + " "+str(len(reviewVotes)))
-		reviewDate = soup.find_all("span",{"data-hook":"review-date"})
+		HC_REVIEW_VOTES = soup.find_all(class_ = re.compile("a-row a-expander-container a-expander-inline-container"))
+		#print(str(len(HC_REVIEW_BODIES)) + " "+str(len(HC_REVIEW_VOTES)))
+		HC_REVIEW_DATES = soup.find_all("span",{"data-hook":"review-date"})
 
-		# Navigating reviewBody to find:
+		# Navigating HC_REVIEW_BODIES to find:
 		# 1) 0-2-0 Review Title
 		# 2) 0-0-0-0 Review Rating
 		# 3) 3-0-0 Review Text
 		# 4) Review ID
 
-		for reviewContent, reviewVoteCount, date in zip(reviewBody, reviewVotes, reviewDate):
-			pidPattern = re.compile(r'\/[A-Z0-9]{10}\/')
-			reviewPattern = re.compile(r', <br\/>,|\[|\]')
-			votePattern = re.compile(r'(people|person) found this helpful')
+		for HC_REVIEW_CONTENT, HC_VOTES_COUNT, HC_DATE_TEXT in zip(HC_REVIEW_BODIES, HC_REVIEW_VOTES, HC_REVIEW_DATES):
+			RE_PID = re.compile(r'\/[A-Z0-9]{10}\/')
+			RE_REVIEW_TEXT = re.compile(r', <br\/>,|\[|\]')
+			RE_VOTES = re.compile(r'(people|person) found this helpful')
 			if(debug):
-				print("Product ID: "+ pidPattern.search(product).group().replace('/',''))
-				print("Product Title: " + productTitle)
-				print("Ratings: " + str(reviewContent.contents[0].contents[0].contents[0].contents[0].contents[0]))
-				print("Review Title: " + str(reviewContent.contents[0].contents[2].contents[0]))
-				print("Review Text: " + reviewPattern.sub('',str(reviewContent.contents[3].contents[0].contents)))
-				if(len(reviewVoteCount.contents[0].contents[1].contents[0])!=1):
+				print("Product ID: "+ RE_PID.search(product).group().replace('/',''))
+				print("Product Title: " + HC_PRODUCT_TITLE)
+				print("Ratings: " + str(HC_REVIEW_CONTENT.contents[0].contents[0].contents[0].contents[0].contents[0]))
+				print("Review Title: " + str(HC_REVIEW_CONTENT.contents[0].contents[2].contents[0]))
+				print("Review Text: " + RE_REVIEW_TEXT.sub('',str(HC_REVIEW_CONTENT.contents[3].contents[0].contents)))
+				if(len(HC_VOTES_COUNT.contents[0].contents[1].contents[0])!=1):
 					print("Votes: 0")
 				else:
-					votes = str(reviewVoteCount.contents[0].contents[1].contents[0].contents[0])
-					votes = votePattern.sub('',str(reviewVoteCount.contents[0].contents[1].contents[0].contents[0]))
+					votes = str(HC_VOTES_COUNT.contents[0].contents[1].contents[0].contents[0])
+					votes = RE_VOTES.sub('',str(HC_VOTES_COUNT.contents[0].contents[1].contents[0].contents[0]))
 					votes = votes.replace('One','1')
 					print("Helpful Votes: "+votes)
-				print("Review ID: " + str(reviewContent.get('id')).replace('customer_review-',''))
-				print("Review Date:" + str(parse(date.text.replace('on ','')).strftime("%d/%m/%Y")))
+				print("Review ID: " + str(HC_REVIEW_CONTENT.get('id')).replace('customer_review-',''))
+				print("Review Date:" + str(parse(HC_DATE_TEXT.text.replace('on ','')).strftime("%d/%m/%Y")))
 				print("")
 			cols = ('Product-ID', 'Product-Title', 'Date-First-Available' ,'Ratings', 'Review-Title', 'Review-Text', 'Helpful-Votes', 'Review-ID', 'Review-Date')
 			lst=[]
-			pid = pidPattern.search(product).group().replace('/','')
-			pdtTitle = productTitle
-			ratings = str(reviewContent.contents[0].contents[0].contents[0].contents[0].contents[0])
+			pid = RE_PID.search(product).group().replace('/','')
+			pdtTitle = HC_PRODUCT_TITLE
+			ratings = str(HC_REVIEW_CONTENT.contents[0].contents[0].contents[0].contents[0].contents[0])
 			ratings = ratings[0]
-			title = str(reviewContent.contents[0].contents[2].contents[0])
-			text = reviewPattern.sub('',str(reviewContent.contents[3].contents[0].contents))
-			if(len(reviewVoteCount.contents[0].contents[1].contents[0])!=1):
+			title = str(HC_REVIEW_CONTENT.contents[0].contents[2].contents[0])
+			text = RE_REVIEW_TEXT.sub('',str(HC_REVIEW_CONTENT.contents[3].contents[0].contents))
+			if(len(HC_VOTES_COUNT.contents[0].contents[1].contents[0])!=1):
 					votes = 0
 			else:
-					votes = str(reviewVoteCount.contents[0].contents[1].contents[0].contents[0])
-					votes = votePattern.sub('',str(reviewVoteCount.contents[0].contents[1].contents[0].contents[0]))
+					votes = str(HC_VOTES_COUNT.contents[0].contents[1].contents[0].contents[0])
+					votes = RE_VOTES.sub('',str(HC_VOTES_COUNT.contents[0].contents[1].contents[0].contents[0]))
 					votes = votes.replace('One','1')
-			rid = str(reviewContent.get('id')).replace('customer_review-','')
-			rDate = str(parse(date.text.replace('on ','')).strftime("%d/%m/%Y"))
+			rid = str(HC_REVIEW_CONTENT.get('id')).replace('customer_review-','')
+			rDate = str(parse(HC_DATE_TEXT.text.replace('on ','')).strftime("%d/%m/%Y"))
 			lst.append([pid,pdtTitle,dateFirstAvaliable,ratings,title,text,votes,rid,rDate])
 			df = pd.DataFrame(lst, columns = cols)
 			global lock
 			lock.acquire()
-			global df1
-			df1 = pd.concat([df1,df], ignore_index=True)
+			global mainDataFrame
+			mainDataFrame = pd.concat([mainDataFrame,df], ignore_index=True)
 			df_list.append(df)
 			lock.release()
 		start +=1
 	
-
-
 def getReviewData(p):
-	product = ""
-	productURLPattern = re.compile(r'(\/gp\/product\/)|\/dp\/')
-	product = productURLPattern.sub('/product-reviews/',p)
-	matchProduct = re.search(r'product-reviews/.{11}',product)
-	product = product.replace(product[matchProduct.end():],'?pageNumber=1')
+	"""Collects review data of any product from amazon.in site and stores it as a CSV locally and uplaods a backup to Google Drive"""
+	reviewPage = ""
+	RE_PRODUCT_URL = re.compile(r'(\/gp\/product\/)|\/dp\/')
+	reviewPage = RE_PRODUCT_URL.sub('/product-reviews/',p)
+	RE_REVIEW_PAGE_NUMBER = re.search(r'product-reviews/.{11}',reviewPage)
+	reviewPage = reviewPage.replace(reviewPage[RE_REVIEW_PAGE_NUMBER.end():],'?pageNumber=1')
 	
-	#print(product)
-	success = False
-	soup = openAndParse(success,p)
+	#print(reviewPage)
+	soup = openAndParse(False,p)
 	### TO DO : 
 	# Inlcude Sales Rank 
 	# scrap appropriately for different types of products
@@ -158,77 +156,75 @@ def getReviewData(p):
 			#print(dateFirstAvaliable)
 		except: dateFirstAvaliable = "NA"
 	
-	productTitle = soup.find('span',{'id':'productTitle'}).text
-	productTitlePattern = re.compile(r'[^ a-zA-Z0-9,()/] *')
-	productTitle = productTitlePattern.sub('',productTitle)
+	HC_PRODUCT_TITLE = soup.find('span',{'id':'productTitle'}).text
+	RE_PRODUCT_TITLE = re.compile(r'[^ a-zA-Z0-9,()/] *')
+	HC_PRODUCT_TITLE = RE_PRODUCT_TITLE.sub('',HC_PRODUCT_TITLE)
 	# print(dateFirstAvaliable)
-	success = False
-	soup = openAndParse(success,product)
+	soup = openAndParse(False,reviewPage)
 
-	reviewPageCount = soup.find("div",{"id":"cm_cr-pagination_bar"})
-	if(reviewPageCount is not None):
-		if(len(reviewPageCount.contents[0]) <8):
-			reviewCount = reviewPageCount.contents[0].contents[len(reviewPageCount.contents[0])-2].contents[0].contents[0]
+	HC_LAST_REVIEW_PAGE_NUM = soup.find("div",{"id":"cm_cr-pagination_bar"})
+	if(HC_LAST_REVIEW_PAGE_NUM is not None):
+		if(len(HC_LAST_REVIEW_PAGE_NUM.contents[0]) <8):
+			numberOfReviewPages = HC_LAST_REVIEW_PAGE_NUM.contents[0].contents[len(HC_LAST_REVIEW_PAGE_NUM.contents[0])-2].contents[0].contents[0]
 		else:
-			reviewCount = reviewPageCount.contents[0].contents[6].contents[0].contents[0]
+			numberOfReviewPages = HC_LAST_REVIEW_PAGE_NUM.contents[0].contents[6].contents[0].contents[0]
 	else:
-		reviewCount = '1'
-	success = False
-	reviewCount = int(reviewCount.replace(',',''))
-	#print(reviewCount)
+		numberOfReviewPages = '1'
+	numberOfReviewPages = int(numberOfReviewPages.replace(',',''))
+	#print(numberOfReviewPages)
 	
-	#Load review pages as ranges in startList and endList arrays
-	#A range value (start in startList, end in endList) is taken to load reviews between page number [start] to page number [end]
-	#Total review pages (reviewCount) is divided by 10 to get 10 equal (except maybe the last set) range sets
-	startList = []
-	endList = []
-	x = math.ceil(reviewCount/10)
-	startNUM = 1
-	endNUM = x
-	totalNUM = 0
+	#Load review pages as ranges in startPages and endPages arrays
+	#A range value (start in startPages, end in endPages) is taken to load reviews between page number [start] to page number [end]
+	#Total review pages (numberOfReviewPages) is divided by 10 to get 10 equal (except maybe the last set) range sets
+	startPages = []
+	endPages = []
+	x = math.ceil(numberOfReviewPages/10)
+	startPage = 1
+	endPage = x
+	totalPages = 0
 	multiplier = 2
-	#iterate and load startNUM and endNUM into startList and endList respectively - for (start, end) pairs
-	while(totalNUM<reviewCount):
-		startList.append(startNUM)
-		endList.append(endNUM)
-		totalNUM += x
-		startNUM = endNUM + 1
-		#check if the page number doesn't exceed actual page numbers avaliable (reviewCount)
-		if multiplier*x < reviewCount:
-			endNUM = multiplier*x
+	#iterate and load startPage and endPage into startPages and endPages respectively - for (start, end) pairs
+	while(totalPages<numberOfReviewPages):
+		startPages.append(startPage)
+		endPages.append(endPage)
+		totalPages += x
+		startPage = endPage + 1
+		#check if the page number doesn't exceed actual page numbers avaliable (numberOfReviewPages)
+		if multiplier*x < numberOfReviewPages:
+			endPage = multiplier*x
 			multiplier += 1
 		else:
 			break
 	
 	#coumpute remainder pages start,end pair
-	lastNUM = reviewCount - endNUM
-	startNUM = endNUM+1
-	endNUM = startNUM + lastNUM - 1
-	startList.append(startNUM)
-	endList.append(endNUM)
+	lastPage = numberOfReviewPages - endPage
+	startPage = endPage + 1
+	endPage = startPage + lastPage - 1
+	startPages.append(startPage)
+	endPages.append(endPage)
 	
 	#generate range pairs [start,end]
-	linksList = []
-	for s,e in zip(startList,endList):
-		linksList.append([s,e])
+	pagePairs = []
+	for s,e in zip(startPages,endPages):
+		pagePairs.append([s,e])
 	
 	#setup multi threading
 	pool = EpicPool(10)
 	#load constant paramenters to be passed to getReviewData_mThreading
-	partial_fn = partial(getReviewData_mThreading, pdt=product, dfa = dateFirstAvaliable,pTitle=productTitle)
+	partial_fn = partial(getReviewData_mThreading, pdt=reviewPage, dfa = dateFirstAvaliable,pTitle=HC_PRODUCT_TITLE)
 	#df_set will hold a list of Data Frames computed from getReviewData_mThreading
-	pool.map(partial_fn, linksList)
+	pool.map(partial_fn, pagePairs)
 	
-	global df1
-	print("Collected "+ str(len(df1))+" reviews")
+	global mainDataFrame
+	print("Collected "+ str(len(mainDataFrame))+" reviews")
 	
 	#get pid value to save the Data Frame as <pid>.csv
-	pidPattern = re.compile(r'\/[A-Z0-9]{10}\/')
-	pid = pidPattern.search(product).group().replace('/','')
-	df1.to_csv(pid +".csv", index=False)
+	RE_PID = re.compile(r'\/[A-Z0-9]{10}\/')
+	pid = RE_PID.search(reviewPage).group().replace('/','')
+	mainDataFrame.to_csv(pid +".csv", index=False)
 	
 	#clear data frame for next set of reviews
-	df1 = df1.iloc[0:0]
+	mainDataFrame = mainDataFrame.iloc[0:0]
 	#save csv to google drive
 	fileID = sendCSV(pid)
 	return fileID

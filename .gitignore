@@ -5,3 +5,4 @@
 *_CSV-Data
 *__pycache__
 *.tar
+.pytest_cache
