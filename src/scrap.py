@@ -1,6 +1,5 @@
 #Review Scrapper for products on amazon.in site
 
-#Libs for opening url and parsing html data
 import math
 import http
 import sys
