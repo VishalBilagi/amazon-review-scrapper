@@ -1,8 +1,10 @@
 # VSCode ignore folder
-./vs/
+.vs
+.vscode
 *.csv
 *.json
 *_CSV-Data
 *__pycache__
 *.tar
 .pytest_cache
+.idea
