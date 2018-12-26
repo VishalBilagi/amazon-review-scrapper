@@ -67,12 +67,17 @@ def getReviewData_mThreading(pagePairs,pdt,dfa,pTitle):
 		review_page = product[:RE_PAGE_NUMBER.end()] + str(start)
 
 		soup = openAndParse(False,review_page)
-		#'a-section-cell-widget' class contains the review body
-		#There are total of ten reviews per page
-		HC_REVIEW_BODIES = soup.find_all(class_=re.compile("a-section celwidget"))
+		"""
+			# AMAZON-HTML-Content update: No longer need to traverse HC_REVIEW_BODIES to get Title, Rating and Review text
+			# HC_REVIEW_BODIES -> Changed to HC_REVIEW_IDS to only look for Review ID
+
+			#'a-section-cell-widget' class contains the review body
+			#There are total of ten reviews per page
+		"""
+		HC_REVIEW_IDS = soup.find_all(class_=re.compile("a-section celwidget"))
 		#'a-row a-expander-container a-expander-inline-container' class contains body of helpful votes a review received
 		HC_REVIEW_VOTES = soup.find_all(class_ = re.compile("a-row a-expander-container a-expander-inline-container"))
-		#print(str(len(HC_REVIEW_BODIES)) + " "+str(len(HC_REVIEW_VOTES)))
+		
 		HC_REVIEW_DATES = soup.find_all("span",{"data-hook":"review-date"})
 
 		HC_REIVEW_RATINGS = soup.find_all("i",{"data-hook":"review-star-rating"})
@@ -80,12 +85,8 @@ def getReviewData_mThreading(pagePairs,pdt,dfa,pTitle):
 		HC_REVIEW_TITLES = soup.find_all("a",{"data-hook":"review-title"})
 
 		HC_REVIEW_BODY = soup.find_all("span",{"data-hook":"review-body"})
-		# Navigating HC_REVIEW_BODIES to find:
-		# 1) 0-2-0 Review Title
-		# 3) 3-0-0 Review Text
-		# 4) Review ID
-
-		for HC_REVIEW_CONTENT, HC_VOTES_COUNT, HC_DATE_TEXT,HC_RATING_TEXT, HC_REVIEW_TITLE, HC_REVIEW_BODY_TEXT in zip(HC_REVIEW_BODIES, HC_REVIEW_VOTES, HC_REVIEW_DATES, HC_REIVEW_RATINGS,HC_REVIEW_TITLES,HC_REVIEW_BODY):
+		
+		for HC_REVIEW_ID, HC_VOTES_COUNT, HC_DATE_TEXT,HC_RATING_TEXT, HC_REVIEW_TITLE, HC_REVIEW_BODY_TEXT in zip(HC_REVIEW_IDS, HC_REVIEW_VOTES, HC_REVIEW_DATES, HC_REIVEW_RATINGS,HC_REVIEW_TITLES,HC_REVIEW_BODY):
 			RE_PID = re.compile(r'\/[A-Z0-9]{10}\/')
 			RE_REVIEW_TEXT = re.compile(r', <br\/>,|\[|\]')
 			RE_VOTES = re.compile(r'(people|person) found this helpful')
@@ -102,7 +103,7 @@ def getReviewData_mThreading(pagePairs,pdt,dfa,pTitle):
 					votes = RE_VOTES.sub('',str(HC_VOTES_COUNT.contents[0].contents[1].contents[0].contents[0]))
 					votes = votes.replace('One','1')
 					print("Helpful Votes: "+votes)
-				print("Review ID: " + str(HC_REVIEW_CONTENT.get('id')).replace('customer_review-',''))
+				print("Review ID: " + str(HC_REVIEW_ID.get('id')).replace('customer_review-',''))
 				print("Review Date:" + str(parse(HC_DATE_TEXT.text.replace('on ','')).strftime("%d/%m/%Y")))
 				print("")
 			cols = ('Product-ID', 'Product-Title', 'Date-First-Available' ,'Ratings', 'Review-Title', 'Review-Text', 'Helpful-Votes', 'Review-ID', 'Review-Date')
@@ -119,7 +120,7 @@ def getReviewData_mThreading(pagePairs,pdt,dfa,pTitle):
 					votes = str(HC_VOTES_COUNT.contents[0].contents[1].contents[0].contents[0])
 					votes = RE_VOTES.sub('',str(HC_VOTES_COUNT.contents[0].contents[1].contents[0].contents[0]))
 					votes = votes.replace('One','1')
-			rid = str(HC_REVIEW_CONTENT.get('id')).replace('customer_review-','')
+			rid = str(HC_REVIEW_ID.get('id')).replace('customer_review-','')
 			rDate = str(parse(HC_DATE_TEXT.text.replace('on ','')).strftime("%d/%m/%Y"))
 			lst.append([pid,pdtTitle,dateFirstAvaliable,ratings,title,text,votes,rid,rDate])
 			df = pd.DataFrame(lst, columns = cols)
