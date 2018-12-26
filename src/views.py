@@ -1,5 +1,5 @@
 from flask import Flask, request, session, redirect, url_for, render_template, flash
-from .scrap import *
+from .scrape import *
 app = Flask(__name__)
 
 @app.route('/', methods=['GET','POST'])
