@@ -3,6 +3,7 @@
 import math
 import http
 import sys
+import os
 import re
 import pandas as pd
 from time import sleep
@@ -20,7 +21,7 @@ from .googledrive import sendCSV
 cols = ('Product-ID', 'Product-Title', 'Date-First-Available' ,'Ratings', 'Review-Title', 'Review-Text', 'Helpful-Votes', 'Review-ID', 'Review-Date')
 mainDataFrame = pd.DataFrame(columns = cols)
 
-debug = True
+debug = False
 numberOfReviewPages = 1
 lock = Lock()
 
@@ -54,7 +55,7 @@ def openAndParse(success,product):
 	else:
 		return -1
 
-def getReviewData_mThreading(pagePairs,pdt,dfa,pTitle):
+def getReviewData_mThreading(pagePairs,pdt,dfa,pTitle,prid):
 	"""Collects reviews in parallel and pushes them onto a mainDataFrame"""
 	df_list = []
 	product = pdt
@@ -91,7 +92,7 @@ def getReviewData_mThreading(pagePairs,pdt,dfa,pTitle):
 			RE_REVIEW_TEXT = re.compile(r', <br\/>,|\[|\]')
 			RE_VOTES = re.compile(r'(people|person) found this helpful')
 			if(debug):
-				print("Product ID: "+ RE_PID.search(product).group().replace('/',''))
+				print("Product ID: "+ prid)
 				print("Product Title: " + HC_PRODUCT_TITLE)
 				print("Ratings: " + HC_RATING_TEXT.text)
 				print("Review Title: " + HC_REVIEW_TITLE.text)
@@ -108,7 +109,6 @@ def getReviewData_mThreading(pagePairs,pdt,dfa,pTitle):
 				print("")
 			cols = ('Product-ID', 'Product-Title', 'Date-First-Available' ,'Ratings', 'Review-Title', 'Review-Text', 'Helpful-Votes', 'Review-ID', 'Review-Date')
 			lst=[]
-			pid = RE_PID.search(product).group().replace('/','')
 			pdtTitle = HC_PRODUCT_TITLE
 			ratings = str(HC_RATING_TEXT.text)
 			ratings = ratings[0]
@@ -122,7 +122,7 @@ def getReviewData_mThreading(pagePairs,pdt,dfa,pTitle):
 					votes = votes.replace('One','1')
 			rid = str(HC_REVIEW_ID.get('id')).replace('customer_review-','')
 			rDate = str(parse(HC_DATE_TEXT.text.replace('on ','')).strftime("%d/%m/%Y"))
-			lst.append([pid,pdtTitle,dateFirstAvaliable,ratings,title,text,votes,rid,rDate])
+			lst.append([prid,pdtTitle,dateFirstAvaliable,ratings,title,text,votes,rid,rDate])
 			df = pd.DataFrame(lst, columns = cols)
 			global lock
 			lock.acquire()
@@ -132,16 +132,16 @@ def getReviewData_mThreading(pagePairs,pdt,dfa,pTitle):
 			lock.release()
 		start +=1
 	
-def getReviewData(p):
+def getReviewData(productURL):
 	"""Collects review data of any product from amazon.in site and stores it as a CSV locally and uplaods a backup to Google Drive"""
 	reviewPage = ""
 	RE_PRODUCT_URL = re.compile(r'(\/gp\/product\/)|\/dp\/')
-	reviewPage = RE_PRODUCT_URL.sub('/product-reviews/',p)
+	reviewPage = RE_PRODUCT_URL.sub('/product-reviews/',productURL)
 	RE_REVIEW_PAGE_NUMBER = re.search(r'product-reviews/.{11}',reviewPage)
 	reviewPage = reviewPage.replace(reviewPage[RE_REVIEW_PAGE_NUMBER.end():],'?pageNumber=1')
 	
 	#print(reviewPage)
-	soup = openAndParse(False,p)
+	soup = openAndParse(False,productURL)
 	### TO DO : 
 	# Inlcude Sales Rank 
 	# scrap appropriately for different types of products
@@ -149,6 +149,22 @@ def getReviewData(p):
 	#salesRank = soup.find(id="SalesRank")
 	#print( re.compile(r'[\n()]').sub('', str(salesRank.contents[1].contents[0])))
 	
+	#Look for parent ASIN for similar products that have same review data
+	try:
+		RE_MULTI_PRODUCT_PID = re.compile(r'\"parentAsin\":\"[A-Z-0-9]{10}\"')
+		pid = soup.find_all('script',{'data-a-state':'{\"key\":\"page-refresh-data-mason\"}'})
+		pid = RE_MULTI_PRODUCT_PID.search(pid[0].text)
+		#Last 11 characters contain the ASIN
+		pid = pid.group()[-11:-1]
+	except:
+		RE_PID = re.compile(r'\/[A-Z0-9]{10}\/')
+		pid = RE_PID.search(reviewPage).group().replace('/','')
+
+	if os.path.isfile(str(pid)+'.csv'):
+		print("Reviews for this product already collected.")
+		return
+
+
 	try:
 		dateFirstAvaliable = parse(str(soup.find(class_="date-first-available").contents[1].contents[0])).strftime("%d/%m/%Y")
 	except: 
@@ -215,16 +231,14 @@ def getReviewData(p):
 	#setup multi threading
 	pool = EpicPool(10)
 	#load constant paramenters to be passed to getReviewData_mThreading
-	partial_fn = partial(getReviewData_mThreading, pdt=reviewPage, dfa = dateFirstAvaliable,pTitle=HC_PRODUCT_TITLE)
+	partial_fn = partial(getReviewData_mThreading, pdt=reviewPage, dfa = dateFirstAvaliable,pTitle=HC_PRODUCT_TITLE,prid=pid)
 	#df_set will hold a list of Data Frames computed from getReviewData_mThreading
 	pool.map(partial_fn, pagePairs)
 	
 	global mainDataFrame
 	print("Collected "+ str(len(mainDataFrame))+" reviews")
 	
-	#get pid value to save the Data Frame as <pid>.csv
-	RE_PID = re.compile(r'\/[A-Z0-9]{10}\/')
-	pid = RE_PID.search(reviewPage).group().replace('/','')
+	#save the Data Frame as <pid>.csv
 	mainDataFrame.to_csv(pid +".csv", index=False)
 	
 	#clear data frame for next set of reviews
