@@ -134,21 +134,7 @@ def getReviewData_mThreading(pagePairs,pdt,dfa,pTitle,prid):
 	
 def getReviewData(productURL):
 	"""Collects review data of any product from amazon.in site and stores it as a CSV locally and uplaods a backup to Google Drive"""
-	reviewPage = ""
-	RE_PRODUCT_URL = re.compile(r'(\/gp\/product\/)|\/dp\/')
-	reviewPage = RE_PRODUCT_URL.sub('/product-reviews/',productURL)
-	RE_REVIEW_PAGE_NUMBER = re.search(r'product-reviews/.{11}',reviewPage)
-	reviewPage = reviewPage.replace(reviewPage[RE_REVIEW_PAGE_NUMBER.end():],'?pageNumber=1')
-	
-	#print(reviewPage)
 	soup = openAndParse(False,productURL)
-	### TO DO : 
-	# Inlcude Sales Rank 
-	# scrap appropriately for different types of products
-	### TO DO
-	#salesRank = soup.find(id="SalesRank")
-	#print( re.compile(r'[\n()]').sub('', str(salesRank.contents[1].contents[0])))
-	
 	#Look for parent ASIN for similar products that have same review data
 	try:
 		RE_MULTI_PRODUCT_PID = re.compile(r'\"parentAsin\":\"[A-Z-0-9]{10}\"')
@@ -157,13 +143,25 @@ def getReviewData(productURL):
 		#Last 11 characters contain the ASIN
 		pid = pid.group()[-11:-1]
 	except:
-		RE_PID = re.compile(r'\/[A-Z0-9]{10}\/')
-		pid = RE_PID.search(reviewPage).group().replace('/','')
+		RE_PID = re.compile(r'\/[A-Z0-9]{10}(\/|\?)')
+		pid = RE_PID.search(productURL).group()[-11:-1]
 
 	if os.path.isfile(str(pid)+'.csv'):
 		print("Reviews for this product already collected.")
 		return
-
+	
+	reviewPage = ""
+	RE_PRODUCT_URL = re.compile(r'(\/gp\/product\/)|\/dp\/')
+	reviewPage = RE_PRODUCT_URL.sub('/product-reviews/',productURL)
+	RE_REVIEW_PAGE_NUMBER = re.search(r'product-reviews/.{10}',reviewPage)
+	reviewPage = reviewPage.replace(reviewPage[RE_REVIEW_PAGE_NUMBER.end():],'/?pageNumber=1')
+	
+	### TO DO : 
+	# Inlcude Sales Rank 
+	# scrap appropriately for different types of products
+	### TO DO
+	#salesRank = soup.find(id="SalesRank")
+	#print( re.compile(r'[\n()]').sub('', str(salesRank.contents[1].contents[0])))
 
 	try:
 		dateFirstAvaliable = parse(str(soup.find(class_="date-first-available").contents[1].contents[0])).strftime("%d/%m/%Y")
