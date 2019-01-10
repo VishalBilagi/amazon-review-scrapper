@@ -1,4 +1,4 @@
-#Review Scrapper for products on amazon.in site
+#Review Scraper for products on amazon.in site
 
 import math
 import http
@@ -21,7 +21,8 @@ from .googledrive import sendCSV
 cols = ('Product-ID', 'Product-Title', 'Date-First-Available' ,'Ratings', 'Review-Title', 'Review-Text', 'Helpful-Votes', 'Review-ID', 'Review-Date')
 mainDataFrame = pd.DataFrame(columns = cols)
 
-debug = False
+log = False
+saveToDrive = False
 numberOfReviewPages = 1
 lock = Lock()
 
@@ -91,7 +92,7 @@ def getReviewData_mThreading(pagePairs,pdt,dfa,pTitle,prid):
 			RE_PID = re.compile(r'\/[A-Z0-9]{10}\/')
 			RE_REVIEW_TEXT = re.compile(r', <br\/>,|\[|\]')
 			RE_VOTES = re.compile(r'(people|person) found this helpful')
-			if(debug):
+			if(log):
 				print("Product ID: "+ prid)
 				print("Product Title: " + HC_PRODUCT_TITLE)
 				print("Ratings: " + HC_RATING_TEXT.text)
@@ -172,8 +173,7 @@ def getReviewData(productURL):
 			dateFirstAvaliable = re.compile(r'[0-9]{1,2} [a-zA-Z]{1,10} [0-9]{1,4}').findall(str(dateFirstAvaliable))
 			dateFirstAvaliable = parse(dateFirstAvaliable[0]).strftime("%d/%m/%Y")
 			#print(dateFirstAvaliable)
-		except: dateFirstAvaliable = "NA"
-	
+		except: dateFirstAvaliable = "NA"s	
 	HC_PRODUCT_TITLE = soup.find('span',{'id':'productTitle'}).text
 	RE_PRODUCT_TITLE = re.compile(r'[^ a-zA-Z0-9,()/] *')
 	HC_PRODUCT_TITLE = RE_PRODUCT_TITLE.sub('',HC_PRODUCT_TITLE)
@@ -238,9 +238,11 @@ def getReviewData(productURL):
 	
 	#save the Data Frame as <pid>.csv
 	mainDataFrame.to_csv(pid +".csv", index=False)
+	print("File :"+str(pid)+".csv")
 	
 	#clear data frame for next set of reviews
 	mainDataFrame = mainDataFrame.iloc[0:0]
-	#save csv to google drive
-	fileID = sendCSV(pid)
-	return fileID
+	if (saveToDrive):
+		#save csv to google drive
+		fileID = sendCSV(pid)
+		return fileID
