@@ -26,13 +26,15 @@ saveToDrive = False
 numberOfReviewPages = 1
 lock = Lock()
 
-def openAndParse(success,product):
-	""" openAndParse(success,product) function returns a parsed HTML soup object"""
+def openAndParse(pageURL):
+	""" openAndParse(pageURL) function returns a parsed HTML soup object"""
+	success = False
+	#Unless the page is read, keep trying with some delay between requests
 	while success == False:
 			try:
 				#Open reviews site url
 				req = urllib.request.Request(
-					product, 
+					pageURL, 
 					data=None, 
 					headers={
 						'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.139 Safari/537.36'
@@ -40,23 +42,21 @@ def openAndParse(success,product):
 				)
 				page = urllib.request.urlopen(req).read()
 				success = True
-				#print("opened")
 			except urllib.error.URLError as e: 
 				print(e.reason)
 				success = False
-			#Wait some time before making another request
 			except http.client.IncompleteRead as e: 
 				print('partial load')
 				success = False
-			#sleep(2)
+			#Wait some time before making another request
+			sleep(2)
+
 	if(success):
-		#Parse review page
 		return BeautifulSoup(page, 'html5lib')
-		#print("parsed")
 	else:
 		return -1
 
-def getReviewData_mThreading(pagePairs,pdt,dfa,pTitle,prid):
+def getReviewData_mProcessing(pagePairs,pdt,dfa,pTitle,prid):
 	"""Collects reviews in parallel and pushes them onto a mainDataFrame"""
 	df_list = []
 	product = pdt
@@ -68,7 +68,7 @@ def getReviewData_mThreading(pagePairs,pdt,dfa,pTitle,prid):
 		RE_PAGE_NUMBER = re.search(r'pageNumber=', product)
 		review_page = product[:RE_PAGE_NUMBER.end()] + str(start)
 
-		soup = openAndParse(False,review_page)
+		soup = openAndParse(review_page)
 		"""
 			# AMAZON-HTML-Content update: No longer need to traverse HC_REVIEW_BODIES to get Title, Rating and Review text
 			# HC_REVIEW_BODIES -> Changed to HC_REVIEW_IDS to only look for Review ID
@@ -77,7 +77,7 @@ def getReviewData_mThreading(pagePairs,pdt,dfa,pTitle,prid):
 			#There are total of ten reviews per page
 		"""
 		HC_REVIEW_IDS = soup.find_all(class_=re.compile("a-section celwidget"))
-		#'a-row a-expander-container a-expander-inline-container' class contains body of helpful votes a review received
+		
 		HC_REVIEW_VOTES = soup.find_all(class_ = re.compile("a-row a-expander-container a-expander-inline-container"))
 		
 		HC_REVIEW_DATES = soup.find_all("span",{"data-hook":"review-date"})
@@ -134,8 +134,8 @@ def getReviewData_mThreading(pagePairs,pdt,dfa,pTitle,prid):
 		start +=1
 	
 def getReviewData(productURL):
-	"""Collects review data of any product from amazon.in site and stores it as a CSV locally and uplaods a backup to Google Drive"""
-	soup = openAndParse(False,productURL)
+	"""Collects review data of any product from amazon.in site and stores it as a CSV locally and optionally uploads the same to Google Drive"""
+	soup = openAndParse(productURL)
 	#Look for parent ASIN for similar products that have same review data
 	try:
 		RE_MULTI_PRODUCT_PID = re.compile(r'\"parentAsin\":\"[A-Z-0-9]{10}\"')
@@ -168,17 +168,16 @@ def getReviewData(productURL):
 		dateFirstAvaliable = parse(str(soup.find(class_="date-first-available").contents[1].contents[0])).strftime("%d/%m/%Y")
 	except: 
 		try: 
-			#print("This is a book")
 			dateFirstAvaliable = soup.find('b', text="Publisher:").next_sibling
 			dateFirstAvaliable = re.compile(r'[0-9]{1,2} [a-zA-Z]{1,10} [0-9]{1,4}').findall(str(dateFirstAvaliable))
 			dateFirstAvaliable = parse(dateFirstAvaliable[0]).strftime("%d/%m/%Y")
-			#print(dateFirstAvaliable)
-		except: dateFirstAvaliable = "NA"s	
+			
+		except: dateFirstAvaliable = "NA"
 	HC_PRODUCT_TITLE = soup.find('span',{'id':'productTitle'}).text
 	RE_PRODUCT_TITLE = re.compile(r'[^ a-zA-Z0-9,()/] *')
 	HC_PRODUCT_TITLE = RE_PRODUCT_TITLE.sub('',HC_PRODUCT_TITLE)
-	# print(dateFirstAvaliable)
-	soup = openAndParse(False,reviewPage)
+	
+	soup = openAndParse(reviewPage)
 
 	HC_LAST_REVIEW_PAGE_NUM = soup.find("div",{"id":"cm_cr-pagination_bar"})
 	if(HC_LAST_REVIEW_PAGE_NUM is not None):
@@ -189,7 +188,7 @@ def getReviewData(productURL):
 	else:
 		numberOfReviewPages = '1'
 	numberOfReviewPages = int(numberOfReviewPages.replace(',',''))
-	#print(numberOfReviewPages)
+	
 	
 	#Load review pages as ranges in startPages and endPages arrays
 	#A range value (start in startPages, end in endPages) is taken to load reviews between page number [start] to page number [end]
@@ -226,11 +225,10 @@ def getReviewData(productURL):
 	for s,e in zip(startPages,endPages):
 		pagePairs.append([s,e])
 	
-	#setup multi threading
+	#setup multi processing
 	pool = EpicPool(10)
-	#load constant paramenters to be passed to getReviewData_mThreading
-	partial_fn = partial(getReviewData_mThreading, pdt=reviewPage, dfa = dateFirstAvaliable,pTitle=HC_PRODUCT_TITLE,prid=pid)
-	#df_set will hold a list of Data Frames computed from getReviewData_mThreading
+	#load constant paramenters to be passed to getReviewData_mProcessing
+	partial_fn = partial(getReviewData_mProcessing, pdt=reviewPage, dfa = dateFirstAvaliable,pTitle=HC_PRODUCT_TITLE,prid=pid)
 	pool.map(partial_fn, pagePairs)
 	
 	global mainDataFrame
